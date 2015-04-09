@@ -70,12 +70,8 @@ void setNetworkStateLED()
 }
 
 
-int sensorPin = A1;    // select the input pin for the potentiometer
-int sensorPin2 = A0;
-int ledPin = 8;      // select the pin for the LED
 int LEDbrightness;
 int sensorValue = 0;  // variable to store the value coming from the sensor
-int sensorValue2 = 0;
 Statistic stats;
 
 
@@ -86,8 +82,8 @@ void setup() {
   stateLED = 0;                 // matches state of hardware pin set below
   stateNetwork = STATE_JOINED;  // set to joined to keep state off if off
   
-  // declare the ledPin as an OUTPUT:
-  pinMode(ledPin, OUTPUT);
+  // declare the PIN_LED as an OUTPUT:
+  pinMode(PIN_LED, OUTPUT);
   if (isDebugEnabled)
   { // setup debug serial port
     Serial.begin(9600);         // setup serial with a baud rate of 9600
@@ -108,17 +104,14 @@ void loop() {
   setNetworkStateLED();
   
   // read the value from the sensor:
-  Serial.print("fsr0: ");
-  Serial.print(A0);
+  //Serial.print("fsr0: ");
+  //Serial.print(analogRead(A0));
   
+  //Serial.print("\tfsr1: ");
+  //Serial.print(analogRead(A1));
   
-  Serial.print(", fsr1: ");
-  Serial.print(sensorValue);
-  LEDbrightness = map(sensorValue, 0, 1023, 0, 255);
-  
-  sensorValue2 = analogRead(A2);
-  Serial.print(", fsr2: ");
-  Serial.print(sensorValue2);
+  Serial.print("fsr2: ");
+  Serial.print(analogRead(A2));
  
   Serial.print(", fsr3: ");
   Serial.print(analogRead(A3));
@@ -129,6 +122,7 @@ void loop() {
   
   Serial.print(", fsr5: ");
   Serial.print(analogRead(A5));
+  
   
   //sensorValue = (sensorValue + sensorValue2)/2;
   //Serial.print(", TOTAL: ");
@@ -152,9 +146,6 @@ void loop() {
 
   Serial.print(", cnt: ");
   Serial.print(stats.count()); 
-
-  Serial.print(", avg: ");
-  Serial.print(stats.average(), 4);
 
   Serial.print(", stddev: ");
 
@@ -183,8 +174,8 @@ void loop() {
    colorWipe(strip.Color(0, 0, 0), 1); // Off 
   }
   else {
-    // turn the ledPin off:
-    digitalWrite(ledPin, LOW);
+    // turn the PIN_LED off:
+    digitalWrite(PIN_LED, LOW);
   }
   
   //strandTest();
@@ -197,15 +188,14 @@ void loop() {
 
 void announceForce(int force) {
     Serial.print(", sending force: ");
-    Serial.print(sensorValue);
-    smartthing.send("fsr1: " + String(sensorValue) );
+    Serial.print(force);
+    smartthing.send("fsr1: " + String(force) );
     networkTrafficLED();
     
-    // turn the ledPin on
-    digitalWrite(ledPin, LEDbrightness);
+    // turn the PIN_LED on
+    digitalWrite(PIN_LED, LEDbrightness);
     
     //strandBlip();
-    
 }
 
 void networkTrafficLED() {
