@@ -178,7 +178,7 @@ void loop() {
   
   if ( stats.count() > 2 && stats.count() < 5 ) {
     
-    if ( fCnt >= 4 ) {    
+    if ( fCnt >= 4 || isOn(f4)) {    
       //for (uint8_t i = 0; i <= 5
       announceForce(MILKGAL, sum);
           
