@@ -11,6 +11,7 @@
 #define OFF        0
 #define TWOLITER   1
 #define MILKGAL    2
+#define BEER       3
 
 SmartThingsCallout_t messageCallout;    // call out function forward decalaration
 SmartThings smartthing(PIN_THING_RX, PIN_THING_TX, messageCallout);  // constructor
@@ -80,6 +81,7 @@ uint16_t f3 = 0;  // FSR3
 uint16_t f4 = 0;  // FSR4
 uint16_t f5 = 0;  // FSR4
 uint16_t sum = 0;
+uint8_t fCnt = 0;
 Statistic stats;
 
 
@@ -104,6 +106,7 @@ void setup() {
 
 void loop() {
   sum = 0;
+  fCnt = 0;
   
   // run smartthing logic
   smartthing.run();
@@ -115,26 +118,44 @@ void loop() {
   f0 = normalize(analogRead(A0));
   Serial.print("fsr0: ");
   Serial.print(f0);
+  if( isOn(f0) ) {
+    fCnt++;
+  }
   
   f1 = normalize(analogRead(A1));
   Serial.print(", fsr1: ");
   Serial.print(f1);
+  if( isOn(f1) ) {
+    fCnt++;
+  }
   
   f2 = normalize(analogRead(A2));
   Serial.print(", \t fsr2: ");
   Serial.print(f2);
+  if( isOn(f2) ) {
+    fCnt++;
+  }
   
   f3 = normalize(analogRead(A3));
   Serial.print(", \t fsr3: ");
   Serial.print(f3);
+  if( isOn(f3) ) {
+    fCnt++;
+  }
   
   f4 = normalize(analogRead(A4));
   Serial.print(", \t fsr4: ");
   Serial.print(f4);
+  if( isOn(f4) ) {
+    fCnt++;
+  }
   
   f5 = normalize(analogRead(A5));
   Serial.print(", \t fsr5: ");
   Serial.print(f5);
+  if( isOn(f5) ) {
+    fCnt++;
+  }
   
   sum = f0 + f1 + f2 + f3 + f4 + f5;
   Serial.print(", \t sum: ");
@@ -148,19 +169,27 @@ void loop() {
   Serial.print(stats.pop_stdev(), 4);
  
   //detect if there are any changes
-  if (stats.pop_stdev() > 5  /*|| stats.count() >= 500*/) {
+  if (stats.pop_stdev() >= 4  /*|| stats.count() >= 500*/) {
     stats.clear();
   }
-   
-  if ( stats.count() < 2 ) {
+ 
+  
+  if ( stats.count() > 2 && stats.count() < 5 ) {
     
-    if ( isOn(f0) && isOn(f1) && isOn(f2) && isOn(f4) ) {    
-      //2Liter (center FSR is OFF)   
-      announceForce(TWOLITER, (f0 + f1 + f2 + f4)/4);    
-    } else if ( isOn(f0) && isOn(f1) && isOn(f2) && isOn(f3) && isOn(f4) ) {
-      announceForce(MILKGAL, (f0 + f1 + f2 + f3 + f4)/5);    
-    } else if ( isOff(f0) && isOff(f1) && isOff(f2) && isOff(f3) && isOff(f3) && isOff(f4) && isOff(f5) ){
-      announceForce(OFF, 0);    
+    if ( fCnt >= 5 ) {    
+      //for (uint8_t i = 0; i <= 5
+      announceForce(MILKGAL, sum/5);
+          
+    } else if ( fCnt >= 2 ) {
+   
+      announceForce(TWOLITER, sum/2); 
+      
+    } else if ( fCnt == 1 ){
+      
+      announceForce(BEER, sum);
+         
+    } else {
+      announceForce(OFF, 0); 
     }
   } else if ( stats.count() == 5) {
    colorWipe(strip.Color(0, 0, 0), 1); // Off 
@@ -226,6 +255,10 @@ void announceForce(uint8_t item, uint16_t force) {
       Serial.print(", item: 2LITER");
     } else if (item == MILKGAL) {
       Serial.print(", item: MILKGAL");
+    } else if (item == BEER) {
+      Serial.print(", item: BEER");
+    } else if (item == OFF) {
+      Serial.print(", item: OFF");
     }
     
     Serial.print(", sending force: ");
