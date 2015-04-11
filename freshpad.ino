@@ -5,9 +5,13 @@
 #include "Statistic.h" //http://playground.arduino.cc/Main/Statistics
 
 #define PIN_LED_STRIP     6
-#define PIN_LED           13
 #define PIN_THING_RX      3
 #define PIN_THING_TX      2
+
+#define OFF        0
+#define TWOLITER   1
+#define MILKGAL    2
+#define BEER       3
 
 SmartThingsCallout_t messageCallout;    // call out function forward decalaration
 SmartThings smartthing(PIN_THING_RX, PIN_THING_TX, messageCallout);  // constructor
@@ -19,7 +23,7 @@ SmartThings smartthing(PIN_THING_RX, PIN_THING_TX, messageCallout);  // construc
 //   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(12, PIN_LED_STRIP, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(10, PIN_LED_STRIP, NEO_GRB + NEO_KHZ800);
 
 // IMPORTANT: To reduce NeoPixel burnout risk, add 1000 uF capacitor across
 // pixel power leads, add 300 - 500 Ohm resistor on first pixel's data input
@@ -70,8 +74,14 @@ void setNetworkStateLED()
 }
 
 
-int LEDbrightness;
-int sensorValue = 0;  // variable to store the value coming from the sensor
+uint16_t f0 = 0;  // FSR0
+uint16_t f1 = 0;  // FSR1
+uint16_t f2 = 0;  // FSR2
+uint16_t f3 = 0;  // FSR3
+uint16_t f4 = 0;  // FSR4
+uint16_t f5 = 0;  // FSR4
+uint16_t sum = 0;
+uint8_t fCnt = 0;
 Statistic stats;
 
 
@@ -82,8 +92,6 @@ void setup() {
   stateLED = 0;                 // matches state of hardware pin set below
   stateNetwork = STATE_JOINED;  // set to joined to keep state off if off
   
-  // declare the PIN_LED as an OUTPUT:
-  pinMode(PIN_LED, OUTPUT);
   if (isDebugEnabled)
   { // setup debug serial port
     Serial.begin(9600);         // setup serial with a baud rate of 9600
@@ -97,6 +105,11 @@ void setup() {
 }
 
 void loop() {
+  sum = 0;
+  fCnt = 0;
+  
+  //strandTest();
+  
   // run smartthing logic
   smartthing.run();
   
@@ -104,98 +117,154 @@ void loop() {
   setNetworkStateLED();
   
   // read the value from the sensor:
-  //Serial.print("fsr0: ");
-  //Serial.print(analogRead(A0));
+  f0 = normalize(analogRead(A0));
+  Serial.print("fsr0: ");
+  Serial.print(f0);
+  if( isOn(f0) ) {
+    fCnt++;
+  }
   
-  //Serial.print("\tfsr1: ");
-  //Serial.print(analogRead(A1));
+  f1 = normalize(analogRead(A1));
+  Serial.print(", fsr1: ");
+  Serial.print(f1);
+  if( isOn(f1) ) {
+    fCnt++;
+  }
   
-  Serial.print("fsr2: ");
-  Serial.print(analogRead(A2));
+  f2 = normalize(analogRead(A2));
+  Serial.print(", \t fsr2: ");
+  Serial.print(f2);
+  if( isOn(f2) ) {
+    fCnt++;
+  }
+  
+  f3 = normalize(analogRead(A3));
+  Serial.print(", \t fsr3: ");
+  Serial.print(f3);
+  if( isOn(f3) ) {
+    fCnt++;
+  }
+  
+  f4 = normalize(analogRead(A4));
+  Serial.print(", \t fsr4: ");
+  Serial.print(f4);
+  if( isOn(f4) ) {
+    fCnt++;
+  }
+  
+  f5 = normalize(analogRead(A5));
+  Serial.print(", \t fsr5: ");
+  Serial.print(f5);
+  if( isOn(f5) ) {
+    fCnt++;
+  }
+  
+  sum = f0 + f1 + f2 + f3 + f4 + f5;
+  Serial.print(", \t sum: ");
+  Serial.print(sum);
+  stats.add(sum);
+  
+  Serial.print(", \t cnt: ");
+  Serial.print(stats.count());
+  
+  Serial.print(", \t stddev: ");
+  Serial.print(stats.pop_stdev(), 4);
  
-  Serial.print(", fsr3: ");
-  Serial.print(analogRead(A3));
+  //detect if there are any changes
+  if (stats.pop_stdev() >= 4  /*|| stats.count() >= 500*/) {
+    stats.clear();
+  }
+ 
   
-  Serial.print(", fsr4: ");
-  Serial.print(analogRead(A4));
-  sensorValue = analogRead(A4);
+  if ( stats.count() > 2 && stats.count() < 5 ) {
+    
+    if ( fCnt >= 4 || isOn(f4)) {    
+      //for (uint8_t i = 0; i <= 5
+      announceForce(MILKGAL, sum);
+          
+    } else if ( fCnt >= 2 ) {
+   
+      announceForce(TWOLITER, sum); 
+      
+    } else if ( fCnt == 1 ){
+      
+      announceForce(BEER, sum);
+         
+    } else {
+      announceForce(OFF, 0); 
+    }
+  } else if ( stats.count() == 5) {
+   colorWipe(strip.Color(0, 0, 0), 1); // Off 
+  }
   
-  Serial.print(", fsr5: ");
-  Serial.print(analogRead(A5));
+  Serial.println();
+}
+
+boolean isOn(uint16_t val) {
+  if ( val >= 10 ) {
+   return true; 
+  }
   
+  return false;
+}
+
+boolean isOff(uint16_t val) {
+  if ( val < 10 ) {
+   return true; 
+  }
   
-  //sensorValue = (sensorValue + sensorValue2)/2;
-  //Serial.print(", TOTAL: ");
-  //Serial.print(sensorValue);
+  return false;
+}
+
+uint16_t normalize(uint16_t val) { 
   
-  // we'll need to change the range from the analog reading (0-1023) down to the range
-  // used by analogWrite (0-255) with map!
-  sensorValue = map(sensorValue, 0, 1000, 0, 100);
+ 
+  // normalize the FSR range down to a percentage range (0-100) with map!
+  val = map(val, 0, 1000, 0, 100);
 
   //offset  middle tier reading
   //sensorValue = sensorValue >= 90 && sensorValue <= 95 ? map(sensorValue, 90, 95, 10, 99) : sensorValue;
   
   //set caps
-  sensorValue = sensorValue > 100 ? 100 : sensorValue;
-  sensorValue = sensorValue < 0 ? 0 : sensorValue;
+  val = val > 100 ? 100 : val;
+  val = val < 0 ? 0 : val;
   
-  Serial.print(", mapped: ");
-  Serial.print(sensorValue);
-  
-  stats.add(sensorValue);
-
-  Serial.print(", cnt: ");
-  Serial.print(stats.count()); 
-
-  Serial.print(", stddev: ");
-
-  Serial.print(stats.pop_stdev(), 4);
- 
-  if (stats.pop_stdev() > 5  /*|| stats.count() >= 500*/) {
-    stats.clear();
-  }
-  
-  if ( stats.count() < 2 ) {
-    
-    for(int i = 0; i < 1; i++){
-      delay(100);
-      announceForce(sensorValue);
-      if(sensorValue < 30) {
-        
-        buildCells(strip.Color(255, 0, 0), 500); // red
-        
-      } else if(sensorValue < 60) {
-          buildCells(strip.Color(0, 0, 255), 500); // blue
-      } else {
-        buildCells(strip.Color(0, 255, 0), 500); // green
-      }
-    }
-  } else if ( stats.count() == 5) {
-   colorWipe(strip.Color(0, 0, 0), 1); // Off 
-  }
-  else {
-    // turn the PIN_LED off:
-    digitalWrite(PIN_LED, LOW);
-  }
-  
-  //strandTest();
-  
-  // stop the program for <sensorValue> milliseconds:
-  //delay(sensorValue);
-  
-  Serial.println();
+  //Serial.print(", mapped: ");
+  //Serial.print(sensorValue);
+  return(val);
 }
 
-void announceForce(int force) {
+void announceForce(uint8_t item, uint16_t force) {
+    if(item == TWOLITER) {
+      Serial.print(", item: 2LITER");
+      theaterChase(strip.Color(0, 255, 0), 50); // green
+    } else if (item == MILKGAL) {
+      Serial.print(", item: MILKGAL");
+      if(force < 200) {
+        theaterChase(strip.Color(0, 0, 255), 50); // blue
+      } else {
+        theaterChase(strip.Color(0, 255, 0), 50); // green
+      }
+    } else if (item == BEER) {
+      Serial.print(", item: BEER");
+      theaterChase(strip.Color(0, 255, 0), 50); // green
+    } else if (item == OFF) {
+      Serial.print(", item: OFF");
+    }
+    
     Serial.print(", sending force: ");
     Serial.print(force);
-    smartthing.send("fsr1: " + String(force) );
-    networkTrafficLED();
     
-    // turn the PIN_LED on
-    digitalWrite(PIN_LED, LEDbrightness);
-    
+    Serial.print(", sending: fp:" + String(item) + ":" + String(force));
+    networkTrafficLED();  
+    smartthing.send("fp:" + String(item) + ":" + String(force) );    
     //strandBlip();
+    
+    if ( item == OFF ) {
+      theaterChase(strip.Color(127, 127, 127), 50); // White
+      //colorWipe(strip.Color(127, 127, 127), 50); // Blue
+      return;
+    }
 }
 
 void networkTrafficLED() {
@@ -223,40 +292,31 @@ void messageCallout(String message)
     Serial.print(message);
     Serial.println("' ");
   }
-  
-  if (message == "strand-test") {
-      strandTest();
-  } else if (message == "on") {
-      strandOn();
-  } else if (message == "off") {
-      strandOff();
-  } else if (message == "build-cells") {
-      buildCells(strip.Color(0, 255, 0), 500);
-  } else  {
-    Serial.print("unknown message: '");
-  }
 }
 
 void buildCells(uint32_t color, uint8_t wait) {
   uint16_t i;
-  uint8_t third = 4;
-  for(i=0; i< third; i++) {
-      strip.setPixelColor(i, color);
-  }
+
+  strip.setPixelColor(0, color);
+  strip.setPixelColor(1, color);
+  strip.setPixelColor(2, color);
   strip.show();
   delay(wait);
   
-  for(i=third; i< third*2; i++) {
-      strip.setPixelColor(i, color);
-  }
+  strip.setPixelColor(3, color);
+  strip.setPixelColor(4, color);
+  strip.setPixelColor(5, color);
+    strip.show();
+  delay(wait);
+  
+  strip.setPixelColor(6, color);
+  strip.setPixelColor(7, color);
+  strip.setPixelColor(8, color);
+  strip.setPixelColor(9, color);
   strip.show();
   delay(wait);
   
-  for(i=third*2; i< third*3; i++) {
-      strip.setPixelColor(i, color);
-  }
-  strip.show();
-  delay(wait*10);
+  
   colorWipe(strip.Color(0, 0, 0), 3); // Off
 }
 
