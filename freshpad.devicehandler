@@ -15,7 +15,7 @@
  */
 metadata {
 	definition (name: "freshpad", namespace: "wbornor@gmail.com", author: "Wesley Bornor") {
-		capability "Sensor"
+		capability "sensor"
         
         attribute "level", "string"
         
@@ -25,7 +25,7 @@ metadata {
 	// simulator metadata
 	simulator {        
         for (int i = 0; i <= 100; i += 10) {
-			status "${i}": "fp: ${i}"
+			status "${i}": "fp:0:${i}"
 		}
 	}
 
@@ -33,9 +33,12 @@ metadata {
 	tiles {
 	    standardTile("freshpad", "device.level", width: 2, height: 2, canChangeIcon: true, canChangeBackground: true) {
             state "--", label: '${name}', backgroundColor: "#bc2323", defaultState: true
-	        state "LOW", label: '${name}', backgroundColor: "#bc2323" 
-		    state "MEDIUM", label: '${name}', backgroundColor: "#1e9cbb"
-	        state "FULL", label: '${name}', backgroundColor: "#79b821"
+	        state "MILK LOW", label: '${name}', backgroundColor: "#bc2323" 
+		    state "MILK MED", label: '${name}', backgroundColor: "#1e9cbb"
+	        state "MILK FULL", label: '${name}', backgroundColor: "#79b821"
+            state "SODA LOW", label: '${name}', backgroundColor: "#bc2323" 
+		    state "SODA MED", label: '${name}', backgroundColor: "#1e9cbb"
+	        state "SODA FULL", label: '${name}', backgroundColor: "#79b821"
 		}
 
 		main "freshpad"
@@ -54,23 +57,21 @@ def parse(String description) {
       log.debug ("ping")
       return null
     }
-    // def name = parseName(description)
+
     def name = "level"
-    log.debug "name: " + name
     def value = parseValue(description)
-    log.debug "value: " + value
-    def linkText = "TwoLiter"
-    def result = createEvent(name: name, value: value)
+    def linkText = parseLinkText(description)
+    def result = createEvent(name: name, value: value, linkText: linkText)
     log.debug "Parse returned ${result?.descriptionText}"
 
     return result
 }
 
-private String parseName(String description) {
+private String parseLinkText(String description) {
     if (description?.startsWith("fp:0")) {
-      return "2Liter"
+      return "Soda (2 Liter)"
     } else if (description?.startsWith("fp:1")) {
-      return "MilkGal"
+      return "Milk (1 Gallon)"
     }
     log.debug "Could not recognize item"
     null
@@ -79,19 +80,37 @@ private String parseName(String description) {
 private String parseValue(String description) {
   if (description?.startsWith("fp:")) {
     log.debug ("payload: ${description}")
-    def fp = description.substring(description.lastIndexOf(":") + 1).trim()
-    if (fp.isNumber()) {
-       fp = Math.round(new BigDecimal(fp))
-    }
-    if ( fp == 0 ) {
-      	return "--"
-    } else if ( fp < 20 ) {
-      	return "LOW"
-    } else if ( fp < 70 ) {
-	return "MEDIUM"
-    } else {
-      	return "FULL"
-    }
+    def fp = 0; 
+    
+    if (description?.startsWith("fp:0")) {
+        fp = description.substring(description.lastIndexOf(":") + 1).trim()
+        if (fp.isNumber()) {
+           fp = Math.round(new BigDecimal(fp))
+        }
+        if ( fp == 0 ) {
+            return "--"
+        } else if ( fp < 20 ) {
+            return "SODA LOW"
+        } else if ( fp < 70 ) {
+        return "SODA MED"
+        } else {
+            return "SODA FULL"
+        }
+     } else if (description?.startsWith("fp:1")) {
+     	fp = description.substring(description.lastIndexOf(":") + 1).trim()
+        if (fp.isNumber()) {
+           fp = Math.round(new BigDecimal(fp))
+        }
+        if ( fp == 0 ) {
+            return "--"
+        } else if ( fp < 20 ) {
+            return "MILK LOW"
+        } else if ( fp < 70 ) {
+        return "MILK MED"
+        } else {
+            return "MILK FULL"
+        }
+     }
   }
   null
 }
