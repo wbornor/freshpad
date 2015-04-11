@@ -8,8 +8,9 @@
 #define PIN_THING_RX      3
 #define PIN_THING_TX      2
 
-#define TWOLITER   0
-#define MILKGAL  1
+#define OFF        0
+#define TWOLITER   1
+#define MILKGAL    2
 
 SmartThingsCallout_t messageCallout;    // call out function forward decalaration
 SmartThings smartthing(PIN_THING_RX, PIN_THING_TX, messageCallout);  // constructor
@@ -111,39 +112,39 @@ void loop() {
   setNetworkStateLED();
   
   // read the value from the sensor:
-  f0 = analogRead(A0);
+  f0 = normalize(analogRead(A0));
   Serial.print("fsr0: ");
   Serial.print(f0);
   
+  f1 = normalize(analogRead(A1));
   Serial.print(", fsr1: ");
-  f1 = analogRead(A1);
   Serial.print(f1);
   
-  f2 = analogRead(A2);
-  Serial.print(", fsr2: ");
+  f2 = normalize(analogRead(A2));
+  Serial.print(", \t fsr2: ");
   Serial.print(f2);
   
-  f3 = analogRead(A3);
-  Serial.print(", fsr3: ");
+  f3 = normalize(analogRead(A3));
+  Serial.print(", \t fsr3: ");
   Serial.print(f3);
   
-  f4 = analogRead(A4);
-  Serial.print(", fsr4: ");
+  f4 = normalize(analogRead(A4));
+  Serial.print(", \t fsr4: ");
   Serial.print(f4);
   
-  f5 = analogRead(A5);
-  Serial.print(", fsr5: ");
+  f5 = normalize(analogRead(A5));
+  Serial.print(", \t fsr5: ");
   Serial.print(f5);
   
   sum = f0 + f1 + f2 + f3 + f4 + f5;
-  Serial.print(", sum: ");
+  Serial.print(", \t sum: ");
   Serial.print(sum);
   stats.add(sum);
   
-  Serial.print(", cnt: ");
+  Serial.print(", \t cnt: ");
   Serial.print(stats.count());
   
-  Serial.print(", stddev: ");
+  Serial.print(", \t stddev: ");
   Serial.print(stats.pop_stdev(), 4);
  
   //detect if there are any changes
@@ -158,6 +159,8 @@ void loop() {
       announceForce(TWOLITER, (f0 + f1 + f2 + f4)/4);    
     } else if ( isOn(f0) && isOn(f1) && isOn(f2) && isOn(f3) && isOn(f4) ) {
       announceForce(MILKGAL, (f0 + f1 + f2 + f3 + f4)/5);    
+    } else if ( isOff(f0) && isOff(f1) && isOff(f2) && isOff(f3) && isOff(f3) && isOff(f4) && isOff(f5) ){
+      announceForce(OFF, 0);    
     }
   } else if ( stats.count() == 5) {
    colorWipe(strip.Color(0, 0, 0), 1); // Off 
@@ -172,7 +175,15 @@ void loop() {
 }
 
 boolean isOn(uint16_t val) {
-  if ( val > 100 ) {
+  if ( val >= 10 ) {
+   return true; 
+  }
+  
+  return false;
+}
+
+boolean isOff(uint16_t val) {
+  if ( val < 10 ) {
    return true; 
   }
   
@@ -180,6 +191,8 @@ boolean isOn(uint16_t val) {
 }
 
 uint16_t normalize(uint16_t val) { 
+  
+ 
   // normalize the FSR range down to a percentage range (0-100) with map!
   val = map(val, 0, 1000, 0, 100);
 
@@ -196,7 +209,9 @@ uint16_t normalize(uint16_t val) {
 }
 
 void announceForce(uint8_t item, uint16_t force) {
-    for(uint8_t i = 0; i < 1; i++){
+  networkTrafficLED();  
+  
+  for(uint8_t i = 0; i < 1; i++){
       delay(100);
       if(force < 30) {
         buildCells(strip.Color(255, 0, 0), 500); // red
@@ -207,11 +222,17 @@ void announceForce(uint8_t item, uint16_t force) {
       }
     }
     
+    if(item == TWOLITER) {
+      Serial.print(", item: 2LITER");
+    } else if (item == MILKGAL) {
+      Serial.print(", item: MILKGAL");
+    }
+    
     Serial.print(", sending force: ");
     Serial.print(force);
-    smartthing.send("fp:" + String(item) + ":" + String(force) );
-    networkTrafficLED();
     
+    Serial.print(", sending: fp:" + String(item) + ":" + String(force));
+    smartthing.send("fp:" + String(item) + ":" + String(force) );    
     //strandBlip();
 }
 
