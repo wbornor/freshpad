@@ -1,5 +1,5 @@
 # freshpad
-Pad that senses fill levels of commodity items set on top of it
+Pad that senses fill levels of common items in your refrigerator.
 
 [Freshpad Entry on Firstbuild Hack-the-Home](https://firstbuild.com/william.bornor/freshpad/overview/)
 
