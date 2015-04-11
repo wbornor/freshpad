@@ -23,7 +23,7 @@ SmartThings smartthing(PIN_THING_RX, PIN_THING_TX, messageCallout);  // construc
 //   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(12, PIN_LED_STRIP, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(10, PIN_LED_STRIP, NEO_GRB + NEO_KHZ800);
 
 // IMPORTANT: To reduce NeoPixel burnout risk, add 1000 uF capacitor across
 // pixel power leads, add 300 - 500 Ohm resistor on first pixel's data input
@@ -178,13 +178,13 @@ void loop() {
   
   if ( stats.count() > 2 && stats.count() < 5 ) {
     
-    if ( fCnt >= 5 ) {    
+    if ( fCnt >= 4 ) {    
       //for (uint8_t i = 0; i <= 5
-      announceForce(MILKGAL, sum/5);
+      announceForce(MILKGAL, sum);
           
     } else if ( fCnt >= 2 ) {
    
-      announceForce(TWOLITER, sum/2); 
+      announceForce(TWOLITER, sum); 
       
     } else if ( fCnt == 1 ){
       
@@ -237,10 +237,17 @@ uint16_t normalize(uint16_t val) {
 void announceForce(uint8_t item, uint16_t force) {
     if(item == TWOLITER) {
       Serial.print(", item: 2LITER");
+      theaterChase(strip.Color(0, 255, 0), 50); // green
     } else if (item == MILKGAL) {
       Serial.print(", item: MILKGAL");
+      if(force < 200) {
+        theaterChase(strip.Color(0, 0, 255), 50); // blue
+      } else {
+        theaterChase(strip.Color(0, 255, 0), 50); // green
+      }
     } else if (item == BEER) {
       Serial.print(", item: BEER");
+      theaterChase(strip.Color(0, 255, 0), 50); // green
     } else if (item == OFF) {
       Serial.print(", item: OFF");
     }
@@ -253,15 +260,10 @@ void announceForce(uint8_t item, uint16_t force) {
     smartthing.send("fp:" + String(item) + ":" + String(force) );    
     //strandBlip();
     
-    for(uint8_t i = 0; i < 1; i++){
-      delay(100);
-      if(force < 30) {
-        buildCells(strip.Color(255, 0, 0), 500); // red
-      } else if(force < 60) {
-          buildCells(strip.Color(0, 0, 255), 500); // blue
-      } else {
-        buildCells(strip.Color(0, 255, 0), 500); // green
-      }
+    if ( item == OFF ) {
+      theaterChase(strip.Color(127, 127, 127), 50); // White
+      //colorWipe(strip.Color(127, 127, 127), 50); // Blue
+      return;
     }
 }
 
@@ -294,24 +296,27 @@ void messageCallout(String message)
 
 void buildCells(uint32_t color, uint8_t wait) {
   uint16_t i;
-  uint8_t third = 4;
-  for(i=0; i< third; i++) {
-      strip.setPixelColor(i, color);
-  }
+
+  strip.setPixelColor(0, color);
+  strip.setPixelColor(1, color);
+  strip.setPixelColor(2, color);
   strip.show();
   delay(wait);
   
-  for(i=third; i< third*2; i++) {
-      strip.setPixelColor(i, color);
-  }
+  strip.setPixelColor(3, color);
+  strip.setPixelColor(4, color);
+  strip.setPixelColor(5, color);
+    strip.show();
+  delay(wait);
+  
+  strip.setPixelColor(6, color);
+  strip.setPixelColor(7, color);
+  strip.setPixelColor(8, color);
+  strip.setPixelColor(9, color);
   strip.show();
   delay(wait);
   
-  for(i=third*2; i< third*3; i++) {
-      strip.setPixelColor(i, color);
-  }
-  strip.show();
-  delay(wait*10);
+  
   colorWipe(strip.Color(0, 0, 0), 3); // Off
 }
 
