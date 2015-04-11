@@ -108,6 +108,8 @@ void loop() {
   sum = 0;
   fCnt = 0;
   
+  //strandTest();
+  
   // run smartthing logic
   smartthing.run();
   
@@ -195,11 +197,6 @@ void loop() {
    colorWipe(strip.Color(0, 0, 0), 1); // Off 
   }
   
-  //strandTest();
-  
-  // stop the program for <sensorValue> milliseconds:
-  //delay(sensorValue);
-  
   Serial.println();
 }
 
@@ -238,19 +235,6 @@ uint16_t normalize(uint16_t val) {
 }
 
 void announceForce(uint8_t item, uint16_t force) {
-  networkTrafficLED();  
-  
-  for(uint8_t i = 0; i < 1; i++){
-      delay(100);
-      if(force < 30) {
-        buildCells(strip.Color(255, 0, 0), 500); // red
-      } else if(force < 60) {
-          buildCells(strip.Color(0, 0, 255), 500); // blue
-      } else {
-        buildCells(strip.Color(0, 255, 0), 500); // green
-      }
-    }
-    
     if(item == TWOLITER) {
       Serial.print(", item: 2LITER");
     } else if (item == MILKGAL) {
@@ -265,8 +249,20 @@ void announceForce(uint8_t item, uint16_t force) {
     Serial.print(force);
     
     Serial.print(", sending: fp:" + String(item) + ":" + String(force));
+    networkTrafficLED();  
     smartthing.send("fp:" + String(item) + ":" + String(force) );    
     //strandBlip();
+    
+    for(uint8_t i = 0; i < 1; i++){
+      delay(100);
+      if(force < 30) {
+        buildCells(strip.Color(255, 0, 0), 500); // red
+      } else if(force < 60) {
+          buildCells(strip.Color(0, 0, 255), 500); // blue
+      } else {
+        buildCells(strip.Color(0, 255, 0), 500); // green
+      }
+    }
 }
 
 void networkTrafficLED() {
