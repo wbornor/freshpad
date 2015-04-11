@@ -1,7 +1,7 @@
 /**
- *  milk-minder
+ *  freshpad
  *
- *  Copyright 2014 Wesley Bornor
+ *  Copyright 2015 Wesley Bornor
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -14,37 +14,42 @@
  *
  */
 metadata {
-	definition (name: "milk-minder", namespace: "wbornor@gmail.com", author: "Wesley Bornor") {
-		
-
-		fingerprint profileId: "0104", deviceId: "0302", inClusters: "0000,0001,0003,0009,0402,0405"
+	definition (name: "freshpad", namespace: "wbornor@gmail.com", author: "Wesley Bornor") {
+		capability "sensor"
+        
+        attribute "level", "string"
+        
+        fingerprint profileId: "0104", deviceId: "0302", inClusters: "0000,0001,0003,0009,0402,0405"
 	}
 
 	// simulator metadata
 	simulator {        
         for (int i = 0; i <= 100; i += 10) {
-			status "${i}": "fsr1: ${i}"
+			status "${i}": "fp:0:${i}"
 		}
 	}
 
 	// UI tile definitions
 	tiles {
-	        standardTile("fsr1", "device.fsr1", width: 2, height: 2, canChangeIcon: true, canChangeBackground: true, inactiveLabel: false) {
-	            state "--", label: '${name}', backgroundColor: "#bc2323"
-	            state "LOW", label: '${name}', backgroundColor: "#bc2323" 
-		    state "MEDIUM", label: '${name}', backgroundColor: "#1e9cbb"
-	            state "FULL", label: '${name}', backgroundColor: "#79b821"
+	    standardTile("freshpad", "device.level", width: 2, height: 2, canChangeIcon: true, canChangeBackground: true) {
+            state "--", label: '${name}', backgroundColor: "#bc2323", defaultState: true
+	        state "MILK LOW", label: '${name}', backgroundColor: "#bc2323" 
+		    state "MILK MED", label: '${name}', backgroundColor: "#1e9cbb"
+	        state "MILK FULL", label: '${name}', backgroundColor: "#79b821"
+            state "SODA LOW", label: '${name}', backgroundColor: "#bc2323" 
+		    state "SODA MED", label: '${name}', backgroundColor: "#1e9cbb"
+	        state "SODA FULL", label: '${name}', backgroundColor: "#79b821"
 		}
 
-		main(["fsr1"])
-		details(["fsr1"])
+		main "freshpad"
+		details(["freshpad"])
 	}
 }
 
 // Parse incoming device messages to generate events
 def parse(String description) {
     log.debug "description: ${description}"
-    if(!description?.startsWith("fsr")){
+    if(!description?.startsWith("fp")){
       description = zigbee.parse(description)?.text
     }
     log.debug "Parsed description: ${description}"
@@ -52,37 +57,60 @@ def parse(String description) {
       log.debug ("ping")
       return null
     }
-    def name = parseName(description)
+
+    def name = "level"
     def value = parseValue(description)
-    def result = createEvent(name: name, value: value)
+    def linkText = parseLinkText(description)
+    def result = createEvent(name: name, value: value, linkText: linkText)
     log.debug "Parse returned ${result?.descriptionText}"
 
     return result
 }
 
-private String parseName(String description) {
-    if (description?.startsWith("fsr1: ")) {
-      return "fsr1"
+private String parseLinkText(String description) {
+    if (description?.startsWith("fp:0")) {
+      return "Soda (2 Liter)"
+    } else if (description?.startsWith("fp:1")) {
+      return "Milk (1 Gallon)"
     }
+    log.debug "Could not recognize item"
     null
 }
 
 private String parseValue(String description) {
-  if (description?.startsWith("fsr1: ")) {
+  if (description?.startsWith("fp:")) {
     log.debug ("payload: ${description}")
-    def fsr = (description - "fsr1: ").trim()
-    if (fsr.isNumber()) {
-       fsr = Math.round(new BigDecimal(fsr))
-    }
-    if ( fsr == 0 ) {
-      	return "--"
-    } else if ( fsr < 20 ) {
-      	return "LOW"
-    } else if ( fsr < 70 ) {
-	return "MEDIUM"
-    } else {
-      	return "FULL"
-    }
+    def fp = 0; 
+    
+    if (description?.startsWith("fp:0")) {
+        fp = description.substring(description.lastIndexOf(":") + 1).trim()
+        if (fp.isNumber()) {
+           fp = Math.round(new BigDecimal(fp))
+        }
+        if ( fp == 0 ) {
+            return "--"
+        } else if ( fp < 20 ) {
+            return "SODA LOW"
+        } else if ( fp < 70 ) {
+        return "SODA MED"
+        } else {
+            return "SODA FULL"
+        }
+     } else if (description?.startsWith("fp:1")) {
+     	fp = description.substring(description.lastIndexOf(":") + 1).trim()
+        if (fp.isNumber()) {
+           fp = Math.round(new BigDecimal(fp))
+        }
+        if ( fp == 0 ) {
+            return "--"
+        } else if ( fp < 20 ) {
+            return "MILK LOW"
+        } else if ( fp < 70 ) {
+        return "MILK MED"
+        } else {
+            return "MILK FULL"
+        }
+     }
   }
   null
 }
