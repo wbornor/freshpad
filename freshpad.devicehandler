@@ -39,6 +39,9 @@ metadata {
             state "SODA LOW", label: '${name}', backgroundColor: "#bc2323" 
 		    state "SODA MED", label: '${name}', backgroundColor: "#1e9cbb"
 	        state "SODA FULL", label: '${name}', backgroundColor: "#79b821"
+            state "BEER LOW", label: '${name}', backgroundColor: "#bc2323" 
+		    state "BEER MED", label: '${name}', backgroundColor: "#1e9cbb"
+	        state "BEER FULL", label: '${name}', backgroundColor: "#79b821"
 		}
 
 		main "freshpad"
@@ -69,10 +72,15 @@ def parse(String description) {
 
 private String parseLinkText(String description) {
     if (description?.startsWith("fp:0")) {
-      return "Soda (2 Liter)"
+      return "--"
     } else if (description?.startsWith("fp:1")) {
+      return "Soda (2 Liter)"
+    } else if (description?.startsWith("fp:2")) {
       return "Milk (1 Gallon)"
+    } else if (description?.startsWith("fp:3")) {
+      return "Beer Bottle"
     }
+    
     log.debug "Could not recognize item"
     null
 }
@@ -83,34 +91,25 @@ private String parseValue(String description) {
     def fp = 0; 
     
     if (description?.startsWith("fp:0")) {
-        fp = description.substring(description.lastIndexOf(":") + 1).trim()
-        if (fp.isNumber()) {
-           fp = Math.round(new BigDecimal(fp))
-        }
-        if ( fp == 0 ) {
-            return "--"
-        } else if ( fp < 20 ) {
-            return "SODA LOW"
-        } else if ( fp < 70 ) {
-        return "SODA MED"
-        } else {
-            return "SODA FULL"
-        }
-     } else if (description?.startsWith("fp:1")) {
+        return "--"
+    } else if (description?.startsWith("fp:1")) {
+        return "SODA FULL"
+    } else if (description?.startsWith("fp:2")) {
      	fp = description.substring(description.lastIndexOf(":") + 1).trim()
         if (fp.isNumber()) {
            fp = Math.round(new BigDecimal(fp))
         }
         if ( fp == 0 ) {
             return "--"
-        } else if ( fp < 20 ) {
-            return "MILK LOW"
-        } else if ( fp < 70 ) {
+        } else if ( fp < 200 ) {
         return "MILK MED"
         } else {
             return "MILK FULL"
         }
+     } else if (description?.startsWith("fp:3")) {
+         return "BEER FULL"
      }
+     
   }
   null
 }
