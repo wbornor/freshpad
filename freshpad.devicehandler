@@ -15,7 +15,9 @@
  */
 metadata {
 	definition (name: "freshpad", namespace: "wbornor@gmail.com", author: "Wesley Bornor") {
-		attribute "level", "string"
+		capability "Sensor"
+        
+        attribute "level", "string"
         
         fingerprint profileId: "0104", deviceId: "0302", inClusters: "0000,0001,0003,0009,0402,0405"
 	}
@@ -30,14 +32,14 @@ metadata {
 	// UI tile definitions
 	tiles {
 	    standardTile("freshpad", "device.level", width: 2, height: 2, canChangeIcon: true, canChangeBackground: true) {
-            state '--', label: '${name}', backgroundColor: "#bc2323", defaultState: true
-	        state 'LOW', label: '${name}', backgroundColor: "#bc2323" 
-		    state 'MEDIUM', label: '${name}', backgroundColor: "#1e9cbb"
-	        state 'FULL', label: '${name}', backgroundColor: "#79b821"
+            state "--", label: '${name}', backgroundColor: "#bc2323", defaultState: true
+	        state "LOW", label: '${name}', backgroundColor: "#bc2323" 
+		    state "MEDIUM", label: '${name}', backgroundColor: "#1e9cbb"
+	        state "FULL", label: '${name}', backgroundColor: "#79b821"
 		}
 
-		main "fp"
-		details(["fp"])
+		main "freshpad"
+		details(["freshpad"])
 	}
 }
 
