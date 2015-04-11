@@ -1,7 +1,7 @@
 /**
- *  milk-minder
+ *  freshpad
  *
- *  Copyright 2014 Wesley Bornor
+ *  Copyright 2015 Wesley Bornor
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -14,37 +14,37 @@
  *
  */
 metadata {
-	definition (name: "milk-minder", namespace: "wbornor@gmail.com", author: "Wesley Bornor") {
-		
-
-		fingerprint profileId: "0104", deviceId: "0302", inClusters: "0000,0001,0003,0009,0402,0405"
+	definition (name: "freshpad", namespace: "wbornor@gmail.com", author: "Wesley Bornor") {
+		attribute "level", "string"
+        
+        fingerprint profileId: "0104", deviceId: "0302", inClusters: "0000,0001,0003,0009,0402,0405"
 	}
 
 	// simulator metadata
 	simulator {        
         for (int i = 0; i <= 100; i += 10) {
-			status "${i}": "fsr1: ${i}"
+			status "${i}": "fp: ${i}"
 		}
 	}
 
 	// UI tile definitions
 	tiles {
-	        standardTile("fsr1", "device.fsr1", width: 2, height: 2, canChangeIcon: true, canChangeBackground: true, inactiveLabel: false) {
-	            state "--", label: '${name}', backgroundColor: "#bc2323"
-	            state "LOW", label: '${name}', backgroundColor: "#bc2323" 
-		    state "MEDIUM", label: '${name}', backgroundColor: "#1e9cbb"
-	            state "FULL", label: '${name}', backgroundColor: "#79b821"
+	    standardTile("freshpad", "device.level", width: 2, height: 2, canChangeIcon: true, canChangeBackground: true) {
+            state '--', label: '${name}', backgroundColor: "#bc2323", defaultState: true
+	        state 'LOW', label: '${name}', backgroundColor: "#bc2323" 
+		    state 'MEDIUM', label: '${name}', backgroundColor: "#1e9cbb"
+	        state 'FULL', label: '${name}', backgroundColor: "#79b821"
 		}
 
-		main(["fsr1"])
-		details(["fsr1"])
+		main "fp"
+		details(["fp"])
 	}
 }
 
 // Parse incoming device messages to generate events
 def parse(String description) {
     log.debug "description: ${description}"
-    if(!description?.startsWith("fsr")){
+    if(!description?.startsWith("fp")){
       description = zigbee.parse(description)?.text
     }
     log.debug "Parsed description: ${description}"
@@ -52,8 +52,12 @@ def parse(String description) {
       log.debug ("ping")
       return null
     }
-    def name = parseName(description)
+    // def name = parseName(description)
+    def name = "level"
+    log.debug "name: " + name
     def value = parseValue(description)
+    log.debug "value: " + value
+    def linkText = "TwoLiter"
     def result = createEvent(name: name, value: value)
     log.debug "Parse returned ${result?.descriptionText}"
 
@@ -61,24 +65,27 @@ def parse(String description) {
 }
 
 private String parseName(String description) {
-    if (description?.startsWith("fsr1: ")) {
-      return "fsr1"
+    if (description?.startsWith("fp:0")) {
+      return "2Liter"
+    } else if (description?.startsWith("fp:1")) {
+      return "MilkGal"
     }
+    log.debug "Could not recognize item"
     null
 }
 
 private String parseValue(String description) {
-  if (description?.startsWith("fsr1: ")) {
+  if (description?.startsWith("fp:")) {
     log.debug ("payload: ${description}")
-    def fsr = (description - "fsr1: ").trim()
-    if (fsr.isNumber()) {
-       fsr = Math.round(new BigDecimal(fsr))
+    def fp = description.substring(description.lastIndexOf(":") + 1).trim()
+    if (fp.isNumber()) {
+       fp = Math.round(new BigDecimal(fp))
     }
-    if ( fsr == 0 ) {
+    if ( fp == 0 ) {
       	return "--"
-    } else if ( fsr < 20 ) {
+    } else if ( fp < 20 ) {
       	return "LOW"
-    } else if ( fsr < 70 ) {
+    } else if ( fp < 70 ) {
 	return "MEDIUM"
     } else {
       	return "FULL"
