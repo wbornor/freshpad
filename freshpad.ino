@@ -5,9 +5,11 @@
 #include "Statistic.h" //http://playground.arduino.cc/Main/Statistics
 
 #define PIN_LED_STRIP     6
-#define PIN_LED           13
 #define PIN_THING_RX      3
 #define PIN_THING_TX      2
+
+#define TWOLITER   0
+#define MILKGAL  1
 
 SmartThingsCallout_t messageCallout;    // call out function forward decalaration
 SmartThings smartthing(PIN_THING_RX, PIN_THING_TX, messageCallout);  // constructor
@@ -70,8 +72,13 @@ void setNetworkStateLED()
 }
 
 
-int LEDbrightness;
-int sensorValue = 0;  // variable to store the value coming from the sensor
+uint16_t f0 = 0;  // FSR0
+uint16_t f1 = 0;  // FSR1
+uint16_t f2 = 0;  // FSR2
+uint16_t f3 = 0;  // FSR3
+uint16_t f4 = 0;  // FSR4
+uint16_t f5 = 0;  // FSR4
+uint16_t sum = 0;
 Statistic stats;
 
 
@@ -82,8 +89,6 @@ void setup() {
   stateLED = 0;                 // matches state of hardware pin set below
   stateNetwork = STATE_JOINED;  // set to joined to keep state off if off
   
-  // declare the PIN_LED as an OUTPUT:
-  pinMode(PIN_LED, OUTPUT);
   if (isDebugEnabled)
   { // setup debug serial port
     Serial.begin(9600);         // setup serial with a baud rate of 9600
@@ -97,6 +102,8 @@ void setup() {
 }
 
 void loop() {
+  sum = 0;
+  
   // run smartthing logic
   smartthing.run();
   
@@ -104,78 +111,56 @@ void loop() {
   setNetworkStateLED();
   
   // read the value from the sensor:
-  //Serial.print("fsr0: ");
-  //Serial.print(analogRead(A0));
+  f0 = analogRead(A0);
+  Serial.print("fsr0: ");
+  Serial.print(f0);
   
-  //Serial.print("\tfsr1: ");
-  //Serial.print(analogRead(A1));
+  Serial.print(", fsr1: ");
+  f1 = analogRead(A1);
+  Serial.print(f1);
   
-  Serial.print("fsr2: ");
-  Serial.print(analogRead(A2));
- 
+  f2 = analogRead(A2);
+  Serial.print(", fsr2: ");
+  Serial.print(f2);
+  
+  f3 = analogRead(A3);
   Serial.print(", fsr3: ");
-  Serial.print(analogRead(A3));
+  Serial.print(f3);
   
+  f4 = analogRead(A4);
   Serial.print(", fsr4: ");
-  Serial.print(analogRead(A4));
-  sensorValue = analogRead(A4);
+  Serial.print(f4);
   
+  f5 = analogRead(A5);
   Serial.print(", fsr5: ");
-  Serial.print(analogRead(A5));
+  Serial.print(f5);
   
+  sum = f0 + f1 + f2 + f3 + f4 + f5;
+  Serial.print(", sum: ");
+  Serial.print(sum);
+  stats.add(sum);
   
-  //sensorValue = (sensorValue + sensorValue2)/2;
-  //Serial.print(", TOTAL: ");
-  //Serial.print(sensorValue);
-  
-  // we'll need to change the range from the analog reading (0-1023) down to the range
-  // used by analogWrite (0-255) with map!
-  sensorValue = map(sensorValue, 0, 1000, 0, 100);
-
-  //offset  middle tier reading
-  //sensorValue = sensorValue >= 90 && sensorValue <= 95 ? map(sensorValue, 90, 95, 10, 99) : sensorValue;
-  
-  //set caps
-  sensorValue = sensorValue > 100 ? 100 : sensorValue;
-  sensorValue = sensorValue < 0 ? 0 : sensorValue;
-  
-  Serial.print(", mapped: ");
-  Serial.print(sensorValue);
-  
-  stats.add(sensorValue);
-
   Serial.print(", cnt: ");
-  Serial.print(stats.count()); 
-
+  Serial.print(stats.count());
+  
   Serial.print(", stddev: ");
-
   Serial.print(stats.pop_stdev(), 4);
  
+  //detect if there are any changes
   if (stats.pop_stdev() > 5  /*|| stats.count() >= 500*/) {
     stats.clear();
   }
-  
+   
   if ( stats.count() < 2 ) {
     
-    for(int i = 0; i < 1; i++){
-      delay(100);
-      announceForce(sensorValue);
-      if(sensorValue < 30) {
-        
-        buildCells(strip.Color(255, 0, 0), 500); // red
-        
-      } else if(sensorValue < 60) {
-          buildCells(strip.Color(0, 0, 255), 500); // blue
-      } else {
-        buildCells(strip.Color(0, 255, 0), 500); // green
-      }
+    if ( isOn(f0) && isOn(f1) && isOn(f2) && isOn(f4) ) {    
+      //2Liter (center FSR is OFF)   
+      announceForce(TWOLITER, (f0 + f1 + f2 + f4)/4);    
+    } else if ( isOn(f0) && isOn(f1) && isOn(f2) && isOn(f3) && isOn(f4) ) {
+      announceForce(MILKGAL, (f0 + f1 + f2 + f3 + f4)/5);    
     }
   } else if ( stats.count() == 5) {
    colorWipe(strip.Color(0, 0, 0), 1); // Off 
-  }
-  else {
-    // turn the PIN_LED off:
-    digitalWrite(PIN_LED, LOW);
   }
   
   //strandTest();
@@ -186,14 +171,46 @@ void loop() {
   Serial.println();
 }
 
-void announceForce(int force) {
+boolean isOn(uint16_t val) {
+  if ( val > 100 ) {
+   return true; 
+  }
+  
+  return false;
+}
+
+uint16_t normalize(uint16_t val) { 
+  // normalize the FSR range down to a percentage range (0-100) with map!
+  val = map(val, 0, 1000, 0, 100);
+
+  //offset  middle tier reading
+  //sensorValue = sensorValue >= 90 && sensorValue <= 95 ? map(sensorValue, 90, 95, 10, 99) : sensorValue;
+  
+  //set caps
+  val = val > 100 ? 100 : val;
+  val = val < 0 ? 0 : val;
+  
+  //Serial.print(", mapped: ");
+  //Serial.print(sensorValue);
+  return(val);
+}
+
+void announceForce(uint8_t item, uint16_t force) {
+    for(uint8_t i = 0; i < 1; i++){
+      delay(100);
+      if(force < 30) {
+        buildCells(strip.Color(255, 0, 0), 500); // red
+      } else if(force < 60) {
+          buildCells(strip.Color(0, 0, 255), 500); // blue
+      } else {
+        buildCells(strip.Color(0, 255, 0), 500); // green
+      }
+    }
+    
     Serial.print(", sending force: ");
     Serial.print(force);
-    smartthing.send("fsr1: " + String(force) );
+    smartthing.send("fp:" + String(item) + ":" + String(force) );
     networkTrafficLED();
-    
-    // turn the PIN_LED on
-    digitalWrite(PIN_LED, LEDbrightness);
     
     //strandBlip();
 }
@@ -222,18 +239,6 @@ void messageCallout(String message)
     Serial.print("Received message: '");
     Serial.print(message);
     Serial.println("' ");
-  }
-  
-  if (message == "strand-test") {
-      strandTest();
-  } else if (message == "on") {
-      strandOn();
-  } else if (message == "off") {
-      strandOff();
-  } else if (message == "build-cells") {
-      buildCells(strip.Color(0, 255, 0), 500);
-  } else  {
-    Serial.print("unknown message: '");
   }
 }
 
